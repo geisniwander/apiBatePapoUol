@@ -108,8 +108,31 @@ app.post("/messages", async (req, res) => {
 });
 
 app.post("/status", async (req, res) => {
+  const { user } = req.headers;
+
   try {
-  } catch (err) {}
+    const userExists = await db
+      .collection("participants")
+      .findOne({ name: user });
+
+    if (!userExists)
+      return res.status(404).send("O usuário informado não existe!");
+
+    const result = await db.collection("participants").updateOne(
+      { _id: ObjectId(userExists._id) },
+      {
+        $set: { lastStatus: Date.now() },
+      }
+    );
+
+    if (result.modifiedCount === 0)
+      return res.status(404).send("Um erro inesperado aconteceu!");
+
+    res.status(200).send("Status atualizado!");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+  }
 });
 
 app.get("/participants", async (req, res) => {
