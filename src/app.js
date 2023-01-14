@@ -145,9 +145,23 @@ app.get("/participants", async (req, res) => {
   }
 });
 
-app.get("/messages", async (req, res) => {
+app.get("/messages/", async (req, res) => {
+  const { limit } = req.query;
+  const { user } = req.headers;
+
   try {
-  } catch (err) {}
+    const messages = await db
+      .collection("messages")
+      .find({ $or: [{ from: user }, { to: { $in: ["todos", user] } }] })
+      .toArray();
+
+    if (!limit || limit === 0) res.status(200).send([...messages].reverse());
+
+    res.status(200).send([...messages].reverse().slice(0, limit));
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+  }
 });
 
 app.listen(5000, () => {
