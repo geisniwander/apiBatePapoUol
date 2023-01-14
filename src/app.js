@@ -9,6 +9,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+setInterval(removeInactive, 10000);
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
@@ -19,6 +20,12 @@ try {
 } catch (err) {
   console.log("Server Error");
   console.log(err);
+}
+
+async function removeInactive() {
+  await db
+    .collection("participants")
+    .deleteMany({ lastStatus: { $lt: (Date.now() - 10000) } });
 }
 
 /*------ROUTES--------*/
