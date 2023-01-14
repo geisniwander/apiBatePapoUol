@@ -75,7 +75,12 @@ app.post("/status", async (req, res) => {
 
 app.get("/participants", async (req, res) => {
   try {
-  } catch (err) {}
+    const participants = await db.collection("participants").find().toArray();
+    res.send(participants);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+  }
 });
 
 app.get("/messages", async (req, res) => {
