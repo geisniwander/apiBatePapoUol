@@ -34,7 +34,6 @@ async function removeInactive() {
       .deleteMany({ lastStatus: { $lt: Date.now() - 10000 } });
 
     if (!inactiveUsers || inactiveUsers.length === 0) return;
-    console.log(inactiveUsers);
     inactiveUsers.map(
       async (user) =>
         await db.collection("messages").insertOne({
@@ -42,7 +41,7 @@ async function removeInactive() {
           to: "Todos",
           text: "sai da sala...",
           type: "status",
-          time: dayjs().format("h:m:s"),
+          time: dayjs().format("HH:MM:SS"),
         })
     );
   } catch (err) {
@@ -83,7 +82,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "entra na sala...",
       type: "status",
-      time: dayjs().format("h:m:s"),
+      time: dayjs().format("HH:MM:SS"),
     });
 
     res.status(201).send("Cadastro efetuado!");
@@ -178,6 +177,10 @@ app.get("/participants", async (req, res) => {
 app.get("/messages/", async (req, res) => {
   const { limit } = req.query;
   const { user } = req.headers;
+  const limitNumber = parseInt(limit);
+
+  if (limitNumber <= 0)
+    return res.status(422).send("O limite de mensagens informado é inválido!");
 
   try {
     const messages = await db
@@ -185,9 +188,9 @@ app.get("/messages/", async (req, res) => {
       .find({ $or: [{ from: user }, { to: { $in: ["Todos", user] } }] })
       .toArray();
 
-    if (!limit || limit === 0) res.status(200).send([...messages].reverse());
+    if (!limit) return res.status(200).send([...messages].reverse());
 
-    res.status(200).send([...messages].reverse().slice(0, limit));
+    res.status(200).send([...messages].reverse().slice(0, limitNumber));
   } catch (err) {
     console.log(err);
     res.status(500).send("Um erro inesperado aconteceu no servidor!");
