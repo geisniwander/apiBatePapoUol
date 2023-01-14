@@ -41,7 +41,7 @@ async function removeInactive() {
           to: "Todos",
           text: "sai da sala...",
           type: "status",
-          time: dayjs().format("HH:MM:SS"),
+          time: dayjs().format("hh:mm:ss"),
         })
     );
   } catch (err) {
@@ -82,7 +82,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "entra na sala...",
       type: "status",
-      time: dayjs().format("HH:MM:SS"),
+      time: dayjs().format("hh:mm:ss"),
     });
 
     res.status(201).send("Cadastro efetuado!");
@@ -126,7 +126,7 @@ app.post("/messages", async (req, res) => {
       to: message.to,
       text: message.text,
       type: message.type,
-      time: dayjs().format("h:m:s"),
+      time: dayjs().format("hh:mm:ss"),
     });
 
     res.status(201).send("Mensagem enviada!");
@@ -179,7 +179,7 @@ app.get("/messages/", async (req, res) => {
   const { user } = req.headers;
   const limitNumber = parseInt(limit);
 
-  if (limitNumber <= 0)
+  if (limitNumber <= 0 || (!limitNumber && limit))
     return res.status(422).send("O limite de mensagens informado é inválido!");
 
   try {
