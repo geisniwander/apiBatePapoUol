@@ -64,8 +64,47 @@ app.post("/participants", async (req, res) => {
 });
 
 app.post("/messages", async (req, res) => {
+  const { user } = req.headers;
+  const message = req.body;
+
+  const messageSchema = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.any().valid("message", "private_message").required(),
+  });
+
+  const messageValidation = messageSchema.validate(message, {
+    abortEarly: false,
+  });
+
+  if (messageValidation.error) {
+    const errors = messageValidation.error.details.map(
+      (detail) => detail.message
+    );
+    return res.status(422).send(errors);
+  }
+
   try {
-  } catch (err) {}
+    const userExists = await db
+      .collection("participants")
+      .findOne({ name: user });
+
+    if (!userExists)
+      return res.status(422).send("Mensagem inválida, o usuário não existe!");
+
+    await db.collection("messages").insertOne({
+      from: user,
+      to: message.to,
+      text: message.text,
+      type: message.type,
+      time: dayjs().format("h:m:s"),
+    });
+
+    res.status(201).send("Mensagem enviada!");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+  }
 });
 
 app.post("/status", async (req, res) => {
