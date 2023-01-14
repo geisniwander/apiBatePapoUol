@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 setInterval(removeInactive, 15000);
 
-const mongoClient = new MongoClient(process.env.MONGO_URL);
+const mongoClient = new MongoClient(process.env.DATABASE_URL);
 let db;
 
 try {
