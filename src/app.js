@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
-setInterval(removeInactive, 10000);
+setInterval(removeInactive, 15000);
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
@@ -23,9 +23,32 @@ try {
 }
 
 async function removeInactive() {
-  await db
-    .collection("participants")
-    .deleteMany({ lastStatus: { $lt: (Date.now() - 10000) } });
+  try {
+    const inactiveUsers = await db
+      .collection("participants")
+      .find({ lastStatus: { $lt: Date.now() - 10000 } })
+      .toArray();
+
+    await db
+      .collection("participants")
+      .deleteMany({ lastStatus: { $lt: Date.now() - 10000 } });
+
+    if (!inactiveUsers || inactiveUsers.length === 0) return;
+    console.log(inactiveUsers);
+    inactiveUsers.map(
+      async (user) =>
+        await db.collection("messages").insertOne({
+          from: user.name,
+          to: "Todos",
+          text: "sai da sala...",
+          type: "status",
+          time: dayjs().format("h:m:s"),
+        })
+    );
+  } catch (err) {
+    console.log(err);
+    return "Um erro inesperado aconteceu no servidor!";
+  }
 }
 
 /*------ROUTES--------*/
@@ -159,7 +182,7 @@ app.get("/messages/", async (req, res) => {
   try {
     const messages = await db
       .collection("messages")
-      .find({ $or: [{ from: user }, { to: { $in: ["todos", user] } }] })
+      .find({ $or: [{ from: user }, { to: { $in: ["Todos", user] } }] })
       .toArray();
 
     if (!limit || limit === 0) res.status(200).send([...messages].reverse());
