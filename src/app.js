@@ -249,7 +249,7 @@ app.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
 
 app.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
   const messageId = req.params.ID_DA_MENSAGEM;
-  const { from } = req.headers;
+  const { user } = req.headers;
   const message = req.body;
 
   try {
@@ -262,26 +262,26 @@ app.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
   if (messageSanitized.err) return res.status(422).send(messageSanitized.err);
 
   try {
-    const fromExists = await db
+    const userExists = await db
       .collection("participants")
-      .findOne({ name: from });
+      .findOne({ name: user });
 
     const messageExists = await db
       .collection("messages")
       .findOne({ _id: ObjectId(messageId) });
 
-    if (!fromExists)
+    if (!userExists)
       return res.status(404).send("O usuário informado não existe!");
     if (!messageExists)
       return res.status(404).send("A mensagem informada não existe!");
-    if (messageExists.from !== from)
+    if (messageExists.from !== user)
       return res.status(401).send("Acesso negado!");
 
     await db.collection("messages").updateOne(
       { _id: ObjectId(messageId) },
       {
         $set: {
-          from: from,
+          from: user,
           to: messageSanitized.to,
           text: messageSanitized.text,
           type: messageSanitized.type,
