@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import joi from "joi";
 import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
+import { stripHtml } from "string-strip-html";
 
 dotenv.config();
 const app = express();
@@ -54,12 +55,14 @@ async function removeInactive() {
 
 app.post("/participants", async (req, res) => {
   const user = req.body;
-
+  const userSanitized = { name: stripHtml(user.name).result.trim() };
   const userSchema = joi.object({
     name: joi.string().required(),
   });
 
-  const userValidation = userSchema.validate(user, { abortEarly: false });
+  const userValidation = userSchema.validate(userSanitized, {
+    abortEarly: false,
+  });
 
   if (userValidation.error) {
     const errors = userValidation.error.details.map((detail) => detail.message);
@@ -69,16 +72,16 @@ app.post("/participants", async (req, res) => {
   try {
     const userExists = await db
       .collection("participants")
-      .findOne({ name: user.name });
+      .findOne({ name: userSanitized.name });
 
     if (userExists)
       return res.status(409).send("Esse usuário já está cadastrado!");
 
     await db
       .collection("participants")
-      .insertOne({ name: user.name, lastStatus: Date.now() });
+      .insertOne({ name: userSanitized.name, lastStatus: Date.now() });
     await db.collection("messages").insertOne({
-      from: user.name,
+      from: userSanitized.name,
       to: "Todos",
       text: "entra na sala...",
       type: "status",
@@ -95,6 +98,11 @@ app.post("/participants", async (req, res) => {
 app.post("/messages", async (req, res) => {
   const { user } = req.headers;
   const message = req.body;
+  const messageSanitized = {
+    to: stripHtml(message.to).result.trim(),
+    text: stripHtml(message.text).result.trim(),
+    type: stripHtml(message.type).result.trim(),
+  };
 
   const messageSchema = joi.object({
     to: joi.string().required(),
@@ -102,7 +110,7 @@ app.post("/messages", async (req, res) => {
     type: joi.any().valid("message", "private_message").required(),
   });
 
-  const messageValidation = messageSchema.validate(message, {
+  const messageValidation = messageSchema.validate(messageSanitized, {
     abortEarly: false,
   });
 
@@ -123,9 +131,9 @@ app.post("/messages", async (req, res) => {
 
     await db.collection("messages").insertOne({
       from: user,
-      to: message.to,
-      text: message.text,
-      type: message.type,
+      to: messageSanitized.to,
+      text: messageSanitized.text,
+      type: messageSanitized.type,
       time: dayjs().format("hh:mm:ss"),
     });
 
