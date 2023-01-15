@@ -51,6 +51,33 @@ async function removeInactive() {
   }
 }
 
+function sanitizeMessage(message) {
+  const messageSchema = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.any().valid("message", "private_message").required(),
+  });
+
+  const messageValidation = messageSchema.validate(message, {
+    abortEarly: false,
+  });
+
+  if (messageValidation.error) {
+    const errors = messageValidation.error.details.map(
+      (detail) => detail.message
+    );
+    return { err: errors };
+  }
+
+  const messageSanitized = {
+    to: stripHtml(message.to).result.trim(),
+    text: stripHtml(message.text).result.trim(),
+    type: stripHtml(message.type).result.trim(),
+  };
+
+  return messageSanitized;
+}
+
 /*------ROUTES--------*/
 
 app.post("/participants", async (req, res) => {
@@ -100,31 +127,8 @@ app.post("/participants", async (req, res) => {
 app.post("/messages", async (req, res) => {
   const { user } = req.headers;
   const message = req.body;
-
-  if(!user) return res.status(401).send("Acesso negado!");
-
-  const messageSchema = joi.object({
-    to: joi.string().required(),
-    text: joi.string().required(),
-    type: joi.any().valid("message", "private_message").required(),
-  });
-
-  const messageValidation = messageSchema.validate(message, {
-    abortEarly: false,
-  });
-
-  if (messageValidation.error) {
-    const errors = messageValidation.error.details.map(
-      (detail) => detail.message
-    );
-    return res.status(422).send(errors);
-  }
-
-  const messageSanitized = {
-    to: stripHtml(message.to).result.trim(),
-    text: stripHtml(message.text).result.trim(),
-    type: stripHtml(message.type).result.trim(),
-  };
+  const messageSanitized = sanitizeMessage(message);
+  if (messageSanitized.err) return res.status(422).send(messageSanitized.err);
 
   try {
     const userExists = await db
@@ -151,6 +155,9 @@ app.post("/messages", async (req, res) => {
 
 app.post("/status", async (req, res) => {
   const { user } = req.headers;
+  
+  if (!user)
+    return res.status(422).send("Um usuário válido não foi informado!");
 
   try {
     const userExists = await db
@@ -234,6 +241,55 @@ app.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
     await db.collection("messages").deleteOne({ _id: ObjectId(messageId) });
 
     res.status(200).send("Mensagem excluída!");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+  }
+});
+
+app.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
+  const messageId = req.params.ID_DA_MENSAGEM;
+  const { from } = req.headers;
+  const message = req.body;
+
+  try {
+    ObjectId(messageId);
+  } catch {
+    return res.status(404).send("O id enviado é inválido!");
+  }
+
+  const messageSanitized = sanitizeMessage(message);
+  if (messageSanitized.err) return res.status(422).send(messageSanitized.err);
+
+  try {
+    const fromExists = await db
+      .collection("participants")
+      .findOne({ name: from });
+
+    const messageExists = await db
+      .collection("messages")
+      .findOne({ _id: ObjectId(messageId) });
+
+    if (!fromExists)
+      return res.status(404).send("O usuário informado não existe!");
+    if (!messageExists)
+      return res.status(404).send("A mensagem informada não existe!");
+    if (messageExists.from !== from)
+      return res.status(401).send("Acesso negado!");
+
+    await db.collection("messages").updateOne(
+      { _id: ObjectId(messageId) },
+      {
+        $set: {
+          from: from,
+          to: messageSanitized.to,
+          text: messageSanitized.text,
+          type: messageSanitized.type,
+        },
+      }
+    );
+
+    res.status(200).send("Mensagem editada!");
   } catch (err) {
     console.log(err);
     res.status(500).send("Um erro inesperado aconteceu no servidor!");
