@@ -5,15 +5,16 @@ import joi from "joi";
 import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import { stripHtml } from "string-strip-html";
-
 dotenv.config();
+
 const app = express();
 app.use(cors());
 app.use(express.json());
-setInterval(removeInactive, 15000);
-
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 let db;
+
+const errorMessage = "Um erro inesperado ocorreu no servidor!";
+setInterval(removeInactive, 15000);
 
 try {
   await mongoClient.connect();
@@ -47,7 +48,7 @@ async function removeInactive() {
     );
   } catch (err) {
     console.log(err);
-    return "Um erro inesperado aconteceu no servidor!";
+    return errorMessage;
   }
 }
 
@@ -120,7 +121,7 @@ app.post("/participants", async (req, res) => {
     res.status(201).send("Cadastro efetuado!");
   } catch (err) {
     console.log(err);
-    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+    res.status(500).send(errorMessage);
   }
 });
 
@@ -149,13 +150,13 @@ app.post("/messages", async (req, res) => {
     res.status(201).send("Mensagem enviada!");
   } catch (err) {
     console.log(err);
-    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+    res.status(500).send(errorMessage);
   }
 });
 
 app.post("/status", async (req, res) => {
   const { user } = req.headers;
-  
+
   if (!user)
     return res.status(422).send("Um usuário válido não foi informado!");
 
@@ -180,7 +181,7 @@ app.post("/status", async (req, res) => {
     res.status(200).send("Status atualizado!");
   } catch (err) {
     console.log(err);
-    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+    res.status(500).send(errorMessage);
   }
 });
 
@@ -190,13 +191,13 @@ app.get("/participants", async (req, res) => {
     res.send(participants);
   } catch (err) {
     console.log(err);
-    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+    res.status(500).send(errorMessage);
   }
 });
 
 app.get("/messages/", async (req, res) => {
-  const { limit } = req.query;
   const { user } = req.headers;
+  const { limit } = req.query;
   const limitNumber = parseInt(limit);
 
   if (limitNumber <= 0 || (!limitNumber && limit))
@@ -213,13 +214,13 @@ app.get("/messages/", async (req, res) => {
     res.status(200).send([...messages].reverse().slice(0, limitNumber));
   } catch (err) {
     console.log(err);
-    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+    res.status(500).send(errorMessage);
   }
 });
 
 app.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
-  const messageId = req.params.ID_DA_MENSAGEM;
   const { user } = req.headers;
+  const messageId = req.params.ID_DA_MENSAGEM;
 
   try {
     ObjectId(messageId);
@@ -243,13 +244,13 @@ app.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
     res.status(200).send("Mensagem excluída!");
   } catch (err) {
     console.log(err);
-    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+    res.status(500).send(errorMessage);
   }
 });
 
 app.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
-  const messageId = req.params.ID_DA_MENSAGEM;
   const { user } = req.headers;
+  const messageId = req.params.ID_DA_MENSAGEM;
   const message = req.body;
 
   try {
@@ -292,7 +293,7 @@ app.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
     res.status(200).send("Mensagem editada!");
   } catch (err) {
     console.log(err);
-    res.status(500).send("Um erro inesperado aconteceu no servidor!");
+    res.status(500).send(errorMessage);
   }
 });
 
